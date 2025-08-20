@@ -116,3 +116,6 @@ dmypy.json
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Personal setup files
+SETUP_GITHUB.md
