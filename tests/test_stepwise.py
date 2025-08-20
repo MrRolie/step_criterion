@@ -2,6 +2,11 @@
 Basic tests for step-criterion package functionality.
 """
 
+import sys
+import os
+# Add parent directory to path so we can import step_criterion
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -136,6 +141,55 @@ class TestBasicFunctionality:
                 trace=0
             )
             assert isinstance(result, StepwiseResult)
+    
+    def test_model_averaging(self, sample_data):
+        """Test model averaging functionality."""
+        # Test AIC model averaging
+        result_aic = step_aic(
+            data=sample_data,
+            initial="y ~ 1",
+            scope={"upper": "y ~ x1 + x2 + x3"},
+            model_averaging=True,
+            trace=0
+        )
+        assert isinstance(result_aic, StepwiseResult)
+        assert hasattr(result_aic, 'model_weights')
+        assert result_aic.model_weights is not None
+        assert len(result_aic.model_weights) > 0
+        assert 'Weight' in result_aic.model_weights.columns
+        
+        # Test BIC model averaging
+        result_bic = step_bic(
+            data=sample_data,
+            initial="y ~ 1",
+            scope={"upper": "y ~ x1 + x2 + x3"},
+            model_averaging=True,
+            trace=0
+        )
+        assert isinstance(result_bic, StepwiseResult)
+        assert hasattr(result_bic, 'model_weights')
+        assert result_bic.model_weights is not None
+        assert len(result_bic.model_weights) > 0
+        assert 'Weight' in result_bic.model_weights.columns
+        
+        # Test step_criterion with model averaging
+        result_sc = step_criterion(
+            data=sample_data,
+            initial="y ~ 1",
+            scope={"upper": "y ~ x1 + x2 + x3"},
+            criterion="aic",
+            model_averaging=True,
+            trace=0
+        )
+        assert isinstance(result_sc, StepwiseResult)
+        assert hasattr(result_sc, 'model_weights')
+        assert result_sc.model_weights is not None
+        assert len(result_sc.model_weights) > 0
+        assert 'Weight' in result_sc.model_weights.columns
+        
+        # Check that weights sum to approximately 1
+        total_weight = result_aic.model_weights['Weight'].sum()
+        assert abs(total_weight - 1.0) < 1e-6
 
 
 class TestErrorHandling:

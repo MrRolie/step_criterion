@@ -14,6 +14,7 @@ class StepwiseResult:
     model: object                      # statsmodels Results object
     anova: pd.DataFrame                # R-like step path
     keep: Optional[pd.DataFrame] = None
+    model_weights: Optional[pd.DataFrame] = None  # Model averaging weights
 
 
 # --------------------------
@@ -102,6 +103,58 @@ def _my_deviance(result) -> float:
     return np.nan
 
 
+def _calculate_model_weights(models_path: List[dict], criterion: str = "aic") -> pd.DataFrame:
+    """Calculate model weights (e.g., AIC weights) for model averaging.
+    
+    Args:
+        models_path: List of model dictionaries from stepwise path
+        criterion: Criterion used for weighting ('aic' or 'bic')
+    
+    Returns:
+        DataFrame with model weights and relative information
+    """
+    criterion_col = criterion.upper()
+    
+    # Extract valid criterion values
+    scores = []
+    steps = []
+    for i, m in enumerate(models_path):
+        if criterion_col in m and np.isfinite(m[criterion_col]):
+            scores.append(m[criterion_col])
+            steps.append(m.get("change", f"Step {i}" if i > 0 else "Initial"))
+    
+    if not scores:
+        return pd.DataFrame()
+    
+    # Calculate weights (lower score = better for AIC/BIC)
+    min_score = min(scores)
+    delta_scores = [score - min_score for score in scores]
+    weights = [np.exp(-0.5 * delta) for delta in delta_scores]
+    total_weight = sum(weights)
+    normalized_weights = [w / total_weight for w in weights]
+    
+    # Calculate cumulative weights for interpretation
+    sorted_indices = sorted(range(len(normalized_weights)), 
+                           key=lambda i: normalized_weights[i], reverse=True)
+    cum_weights = []
+    cum_sum = 0
+    for i in range(len(normalized_weights)):
+        if i in sorted_indices:
+            idx = sorted_indices.index(i)
+            cum_sum_at_idx = sum(sorted(normalized_weights, reverse=True)[:idx+1])
+            cum_weights.append(cum_sum_at_idx)
+        else:
+            cum_weights.append(np.nan)
+    
+    return pd.DataFrame({
+        'Step': steps,
+        f'{criterion_col}': scores,
+        f'Delta_{criterion_col}': delta_scores,
+        'Weight': normalized_weights,
+        'Cumulative_Weight': cum_weights
+    }).round(4)
+
+
 def _score(result, criterion: str, k: float) -> float:
     criterion = criterion.lower()
     if criterion == "aic":
@@ -152,6 +205,7 @@ def _step_core(
     alpha_exit: float,
     glm_test: str,
     aic_k: float,
+    model_averaging: bool = False,
 ) -> StepwiseResult:
     if fit_kwargs is None:
         fit_kwargs = {}
@@ -204,11 +258,14 @@ def _step_core(
         print(f"Start:  AIC={base_aic:.3f}")
         print(current_formula, "\n")
 
+    criterion_key = criterion.upper()
     models_path = [{
         "change": "",
         "deviance": _my_deviance(fit),
         "df.resid": int(fit.df_resid),
-        "AIC": base_aic
+        "AIC": base_aic,
+        "score": base_score,
+        criterion_key: base_score
     }]
     keep_records = []
     if keep is not None:
@@ -460,11 +517,14 @@ def _step_core(
             print(f"\nStep:  AIC={base_aic:.3f}")
             print(_build_formula(lhs, current_terms, no_intercept0), "\n")
 
+        criterion_key = criterion.upper()
         models_path.append({
             "change": best_change,
             "deviance": best_deviance,
             "df.resid": best_df_resid,
-            "AIC": base_aic
+            "AIC": base_aic,
+            "score": base_score,
+            criterion_key: base_score  # Store the criterion score
         })
         if keep is not None:
             keep_records.append(keep(fit, base_score))
@@ -489,7 +549,15 @@ def _step_core(
     if keep_records:
         keep_df = pd.DataFrame(keep_records)
 
-    return StepwiseResult(model=fit, anova=path, keep=keep_df)
+    # Calculate model weights if requested
+    weights_df = None
+    if model_averaging and criterion.lower() in {"aic", "bic"}:
+        weights_df = _calculate_model_weights(models_path, criterion.lower())
+        if trace and len(weights_df) > 0:
+            print(f"\nModel Averaging Weights ({criterion.upper()}):")
+            print(weights_df.to_string(index=False))
+
+    return StepwiseResult(model=fit, anova=path, keep=keep_df, model_weights=weights_df)
 
 
 def step_criterion(
@@ -507,11 +575,34 @@ def step_criterion(
     alpha_enter: float = 0.05,
     alpha_exit: float = 0.10,
     glm_test: str = "lr",
+    model_averaging: bool = False,
 ) -> StepwiseResult:
     """Public API: stepwise selection with multiple criteria.
 
+    Args:
+        data: pandas DataFrame with the data
+        initial: Initial model formula as string
+        scope: Model scope (upper/lower bounds) as string or dict
+        direction: Direction of search ("both", "forward", "backward")
+        criterion: Selection criterion ("aic", "bic", "adjr2", "p-value")
+        trace: Verbosity level (0=silent, 1=show progress)
+        keep: Optional function to track custom metrics at each step
+        steps: Maximum number of steps to perform
+        family: statsmodels family (None for OLS, or sm.families.*)
+        fit_kwargs: Additional arguments passed to model.fit()
+        alpha_enter: p-value threshold for entering terms (p-value criterion)
+        alpha_exit: p-value threshold for removing terms (p-value criterion)
+        glm_test: Test type for GLM p-value criterion ("lr", "wald", "score", "gradient")
+        model_averaging: If True, calculate AIC/BIC weights for model averaging
+        
+    Returns:
+        StepwiseResult object with model, anova path, and optional model_weights
+
     Note: For GLM with criterion='p-value', glm_test may be one of 'lr', 'wald', 'score', 'gradient'.
     'score' and 'gradient' currently fall back to LR with a warning.
+    
+    Model averaging is only available for AIC and BIC criteria and provides weights
+    for each model in the stepwise path based on relative information criterion values.
     """
     direction = direction.lower()
     if direction not in {"both", "backward", "forward"}:
@@ -556,6 +647,7 @@ def step_criterion(
             alpha_exit=alpha_exit,
             glm_test=glm_test,
             aic_k=2.0,
+            model_averaging=model_averaging,
         )
         
         # Collect any other warnings that weren't filtered
@@ -589,6 +681,7 @@ def step_aic(
     k: float = 2.0,
     family=None,
     fit_kwargs: Optional[dict] = None,
+    model_averaging: bool = False,
 ) -> StepwiseResult:
     """AIC-based selection. k controls the AIC penalty (default 2.0)."""
     with warnings.catch_warnings():
@@ -616,6 +709,7 @@ def step_aic(
             alpha_exit=0.10,
             glm_test="lr",
             aic_k=k,
+            model_averaging=model_averaging,
         )
 
 
@@ -630,6 +724,7 @@ def step_bic(
     steps: int = 1000,
     family=None,
     fit_kwargs: Optional[dict] = None,
+    model_averaging: bool = False,
 ) -> StepwiseResult:
     """BIC-based selection (penalty is log(n))."""
     with warnings.catch_warnings():
@@ -657,6 +752,7 @@ def step_bic(
             alpha_exit=0.10,
             glm_test="lr",
             aic_k=2.0,
+            model_averaging=model_averaging,
         )
 
 
@@ -670,6 +766,7 @@ def step_adjr2(
     keep: Optional[Callable[[object, float], dict]] = None,
     steps: int = 1000,
     fit_kwargs: Optional[dict] = None,
+    model_averaging: bool = False,
 ) -> StepwiseResult:
     """Adjusted R^2-based selection (OLS only)."""
     with warnings.catch_warnings():
@@ -697,6 +794,7 @@ def step_adjr2(
             alpha_exit=0.10,
             glm_test="lr",
             aic_k=2.0,
+            model_averaging=model_averaging,
         )
 
 

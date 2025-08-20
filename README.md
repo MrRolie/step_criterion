@@ -260,6 +260,50 @@ result = step_criterion(data=df, initial="y ~ 1", criterion="p-value",
                        family=sm.families.Binomial(), glm_test="score")
 ```
 
+### Model Averaging
+
+Model averaging provides AIC/BIC weights for each model in the stepwise path, allowing you to assess relative model support and account for model uncertainty:
+
+```python
+# Enable model averaging with any criterion
+result = step_criterion(data=df, initial="y ~ 1", 
+                       scope={"upper": "y ~ x1 + x2 + x3"},
+                       criterion="aic", model_averaging=True)
+
+# Or use convenience functions
+result = step_aic(data=df, initial="y ~ 1", 
+                  scope={"upper": "y ~ x1 + x2 + x3"},
+                  model_averaging=True)
+
+result = step_bic(data=df, initial="y ~ 1", 
+                  scope={"upper": "y ~ x1 + x2 + x3"},
+                  model_averaging=True)
+
+# Access the model weights
+print(result.model_weights)
+#     Model  Score (AIC)     Delta    Weight
+# 0  y ~ x1         156.2      0.0     0.524
+# 1  y ~ x2         157.8      1.6     0.235
+# 2  y ~ x3         159.1      2.9     0.123
+# 3      y~1        161.4      5.2     0.039
+
+# Interpret the weights
+substantial_support = result.model_weights[result.model_weights['Weight'] > 0.1]
+print(f"Models with substantial support: {len(substantial_support)}")
+print(f"Top model weight: {result.model_weights['Weight'].iloc[0]:.3f}")
+```
+
+**Model weights are calculated as:**
+- Δᵢ = criterionᵢ - min(criterion)  
+- wᵢ = exp(-0.5 × Δᵢ) / Σ exp(-0.5 × Δⱼ)
+
+**Guidelines for interpretation:**
+- **Weight > 0.1**: Substantial support
+- **Weight > 0.05**: Some support  
+- **Weight < 0.05**: Little support
+
+⚠️ **Important**: Weights reflect relative support among models in the stepwise path, not all possible models. Results depend on starting model and search strategy.
+
 ### Direction Options
 
 ```python
