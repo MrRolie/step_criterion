@@ -431,6 +431,9 @@ def _step_core(
 
             if trace:
                 colname = criterion.upper()
+                # Avoid duplicate column names when criterion is AIC
+                if colname == "AIC":
+                    colname = "Score"
                 cand_df = pd.DataFrame(rows, columns=["Op", "Term", colname, "AIC"]).sort_values(
                     colname, na_position="last"
                 )
