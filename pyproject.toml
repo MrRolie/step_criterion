@@ -7,7 +7,7 @@ name = "step-criterion"
 version = "0.1.0"
 description = "Comprehensive stepwise model selection for statsmodels: AIC, BIC, Adjusted R², and p-values with OLS/GLM support."
 readme = "README.md"
-authors = [{ name = "Mikael Hillman-Pepin", email = "your.email@example.com" }]
+authors = [{ name = "Mikael Hillman-Pepin", email = "mikmik1512@gmail.com" }]
 license = { text = "MIT" }
 requires-python = ">=3.9"
 keywords = ["statistics", "regression", "model-selection", "stepwise", "aic", "bic", "statsmodels", "machine-learning"]
