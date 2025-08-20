@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "step-criterion"
-version = "0.2.0"
+version = "0.2.1"
 description = "Educational stepwise model selection for statsmodels: AIC, BIC, Adjusted R², and p-values with OLS/GLM support for exploratory analysis."
 readme = "README.md"
 authors = [{ name = "Mikael Hillman-Pepin", email = "mikmik1512@gmail.com" }]
