@@ -430,12 +430,13 @@ def _step_core(
                 break
 
             if trace:
-                colname = criterion.upper()
+                score_col_name = criterion.upper()
                 # Avoid duplicate column names when criterion is AIC
-                if colname == "AIC":
-                    colname = "Score"
-                cand_df = pd.DataFrame(rows, columns=["Op", "Term", colname, "AIC"]).sort_values(
-                    colname, na_position="last"
+                if score_col_name == "AIC":
+                    score_col_name = "Score (AIC)"
+                
+                cand_df = pd.DataFrame(rows, columns=["Op", "Term", score_col_name, "AIC"]).sort_values(
+                    score_col_name, na_position="last"
                 )
                 print(cand_df.to_string(index=False))
 
