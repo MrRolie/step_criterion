@@ -3,9 +3,9 @@
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Comprehensive stepwise model selection for statsmodels with multiple criteria: AIC, BIC, Adjusted R², and p-values.**
+**Educational and diagnostic stepwise model selection for statsmodels with multiple criteria: AIC, BIC, Adjusted R², and p-values.**
 
-This package provides a unified, flexible interface for performing stepwise regression with various selection criteria, supporting both OLS and GLM models with advanced features like interaction terms, transformations, and different statistical tests.
+This package provides a unified, flexible interface for **exploratory stepwise regression** with various selection criteria, supporting both OLS and GLM models with advanced features like interaction terms, transformations, and different statistical tests. **Designed for educational purposes and model exploration, not production model selection.**
 
 ## ✨ Key Features
 
@@ -17,6 +17,40 @@ This package provides a unified, flexible interface for performing stepwise regr
 - **⚡ GLM Flexibility**: Multiple test types (likelihood ratio, Wald)
 - **🔇 Clean Output**: Automatic suppression of technical warnings
 - **📋 R-like Results**: Familiar ANOVA-style step tables
+
+## ⚠️ Important Statistical Considerations
+
+**This package is designed for educational and exploratory purposes.** Stepwise selection has well-documented statistical limitations that users should understand:
+
+### 🚨 Key Limitations
+
+- **P-value Inflation**: Multiple testing inflates Type I error rates. P-values from stepwise procedures are biased and **should not be used for inference**
+- **Overfitting**: Selected models are optimistic and may not generalize well to new data
+- **Selection Bias**: Standard confidence intervals and hypothesis tests are invalid after model selection
+- **Multiple Comparisons**: The more variables considered, the higher the chance of spurious associations
+
+### 🎯 Recommended Uses
+
+- **✅ Educational**: Learning about model selection and variable importance
+- **✅ Exploratory Data Analysis**: Initial investigation of relationships  
+- **✅ Diagnostic**: Understanding which variables might be relevant
+- **✅ Hypothesis Generation**: Developing ideas for future confirmatory studies
+
+### ❌ Not Recommended For
+
+- **❌ Confirmatory Analysis**: Final statistical inference or hypothesis testing
+- **❌ Production Models**: Automated model selection in production systems
+- **❌ P-value Reporting**: Publishing p-values from stepwise-selected models
+- **❌ Causal Inference**: Establishing causal relationships
+
+### 📚 Better Alternatives for Production
+
+For reliable inference and model selection, consider:
+- **Cross-validation** with penalized regression (LASSO, Ridge, Elastic Net)
+- **Information criteria** with proper model averaging
+- **Bootstrap procedures** for selection uncertainty
+- **Post-selection inference** methods when stepwise is unavoidable
+- **Domain knowledge** guided model specification
 
 ## 🚀 Installation
 
@@ -296,6 +330,8 @@ print(result.anova)
 
 ## 🔍 Examples
 
+**Note**: The following examples demonstrate the package's capabilities for **exploratory analysis**. Remember that p-values and model selection results should not be used for confirmatory inference.
+
 ### Example 1: Economic Data with Interactions
 
 ```python
@@ -428,6 +464,15 @@ result = step_criterion(
 ```
 
 ## 🛠️ API Reference
+
+### ⚠️ Interpretation Warning
+
+**Results from this package should be interpreted carefully:**
+- Use selected models for **exploration and hypothesis generation only**
+- **Do not report p-values** from stepwise-selected models as if they were from pre-specified models
+- **Confidence intervals and standard errors** are not valid after selection
+- **Effect sizes may be inflated** due to selection bias
+- Always validate findings with **independent data** or **proper post-selection methods**
 
 ### Main Function
 
