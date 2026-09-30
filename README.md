@@ -550,7 +550,7 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/MrRolie/step-criterion/issues)
+- **Issues**: [GitHub Issues](https://github.com/MrRolie/step_criterion/issues)
 - **Documentation**: This README and inline docstrings
 - **Examples**: See `examples_usage.ipynb` in the repository
 
